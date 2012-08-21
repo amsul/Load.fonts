@@ -35,17 +35,6 @@
 **/
 
 (function(window){
-
-  // 1) Do we have a mechanism for binding implicit get/set?
-  if(!Object.defineProperty) {
-    throw("Font.js requires Object.defineProperty, which this browser does not support.");
-  }
-
-  // 2) Do we have Canvas2D available?
-  if(!document.createElement("canvas").getContext) {
-    throw("Font.js requires <canvas> and the Canvas2D API, which this browser does not support.");
-  }
-
   // Make sure type arrays are available in IE9
   // Code borrowed from pdf.js (https://gist.github.com/1057924)
   (function(window) {
@@ -91,7 +80,11 @@
     // Okay... umm.. untyped arrays? This may break completely.
     // (Android browser 2.3 and 3 don't do typed arrays)
     else { getter = function() { this.responseBody; }}
-    Object.defineProperty(XMLHttpRequest.prototype, "response", {get: getter});
+    try{
+      Object.defineProperty(XMLHttpRequest.prototype, "response", {get: getter});
+    } catch(err) {
+    // Trow exception in Font constructor to make it easier to handle the exception
+   }
   }(window));
 
 
@@ -125,7 +118,17 @@
     Not-borrowed-code starts here!
 
    **/
-  function Font() {}
+  function Font() {
+    // 1) Do we have a mechanism for binding implicit get/set?
+    if(!Object.defineProperty) {
+      throw("Font.js requires Object.defineProperty, which this browser does not support.");
+    }
+
+    // 2) Do we have Canvas2D available?
+    if(!document.createElement("canvas").getContext) {
+      throw("Font.js requires <canvas> and the Canvas2D API, which this browser does not support.");
+    }
+  }
 
   // if this is not specified, a random name is used
   Font.prototype.fontFamily = "fjs" + (999999 * Math.random() | 0);
@@ -439,12 +442,14 @@
           // Note: in order to do so properly, we need to
           // make sure that the bytes are base64 aligned, so
           // we have to add a leading 0x00:
-          var newhex = btoa(chr(0) +                         // base64 padding byte
+          var newhex = btoa(unescape(encodeURIComponent(
+                            chr(0) +                         // base64 padding byte
                             chr16(endChar) + chr16(0xFFFF) + // "endCount" array
                             chr16(0) +                       // cmap required padding
                             chr16(endChar) + chr16(0xFFFF) + // "startCount" array
                             chr16(delta) +                   // delta value
-                            chr16(1));                       // delta terminator
+                            chr16(1)                         // delta terminator
+                          )));
 
           // And now we replace the text in 'base64' at
           // position 380 with this new base64 string:
@@ -789,7 +794,11 @@
    * Object.defineProperty function to bind a setter
    * that does more than just bind values.
    */
-  Object.defineProperty(Font.prototype, "src", { set: function(url) { this.url=url; this.loadFont(); }});
+   try{
+    Object.defineProperty(Font.prototype, "src", { set: function(url) { this.url=url; this.loadFont(); }});
+   } catch(err) {
+    // Trow exception in Font constructor to make it easier to handle the exception
+   }
 
 
   /**
